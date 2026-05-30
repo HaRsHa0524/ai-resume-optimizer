@@ -5,39 +5,68 @@ import { useState } from "react";
 export default function Home() {
 
   const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
   const [score, setScore] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
 
   const [suggestions, setSuggestions] =
     useState<string[]>([]);
 
-  const analyzeResume = () => {
+  const [resumeText, setResumeText] = useState("");
+
+  const [matchedKeywords, setMatchedKeywords] =
+    useState<string[]>([]);
+
+  const [missingKeywords, setMissingKeywords] =
+    useState<string[]>([]);
+
+  const analyzeResume = async () => {
+
+    if (!file) return;
 
     setLoading(true);
 
-    setTimeout(() => {
+    const formData = new FormData();
 
-      const randomScore =
-        Math.floor(Math.random() * 41) + 60;
+    formData.append("resume", file);
 
-      setScore(randomScore);
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      body: formData,
+    });
 
-      setSuggestions([
-        "Add more technical skills",
-        "Improve project descriptions",
-        "Use ATS-friendly keywords",
-      ]);
+    const data = await response.json();
 
-      setLoading(false);
+    setScore(data.score);
 
-    }, 2000);
+    setSuggestions(data.suggestions || []);
+
+    setResumeText(data.extractedText || "");
+
+    setMatchedKeywords(data.matchedKeywords || []);
+
+    setMissingKeywords(data.missingKeywords || []);
+
+    setLoading(false);
   };
 
   const resetAnalysis = () => {
 
     setFileName("");
+
+    setFile(null);
+
     setScore(null);
+
     setSuggestions([]);
+
+    setResumeText("");
+
+    setMatchedKeywords([]);
+
+    setMissingKeywords([]);
 
   };
 
@@ -99,21 +128,32 @@ export default function Home() {
             Upload your resume and get ATS score instantly
           </p>
 
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => {
+          <label className="mt-6 flex flex-col items-center">
 
-              const file = e.target.files?.[0];
+            <span className="bg-blue-600 text-white px-6 py-3 rounded-xl cursor-pointer hover:bg-blue-700">
+              Choose Resume PDF
+            </span>
 
-              if (file) {
-                setFileName(file.name);
-              }
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => {
 
-            }}
-            className="mt-6"
-            key={fileName}
-          />
+                const selectedFile = e.target.files?.[0];
+
+                if (selectedFile) {
+
+                  setFileName(selectedFile.name);
+
+                  setFile(selectedFile);
+
+                }
+
+              }}
+              className="hidden"
+            />
+
+          </label>
 
           {fileName && (
             <p className="mt-4 text-green-600">
@@ -181,6 +221,53 @@ export default function Home() {
                 ))}
 
               </ul>
+
+            </div>
+          )}
+
+          {matchedKeywords.length > 0 && (
+
+            <div className="mt-6 text-left">
+
+              <h3 className="text-xl font-bold mb-2">
+                Matched Keywords
+              </h3>
+
+              <p className="text-green-600">
+                {matchedKeywords.join(", ")}
+              </p>
+
+            </div>
+          )}
+
+          {missingKeywords.length > 0 && (
+
+            <div className="mt-6 text-left">
+
+              <h3 className="text-xl font-bold mb-2">
+                Missing Keywords
+              </h3>
+
+              <p className="text-red-600">
+                {missingKeywords.join(", ")}
+              </p>
+
+            </div>
+          )}
+
+          {resumeText && (
+
+            <div className="mt-6 text-left">
+
+              <h3 className="text-xl font-bold mb-2">
+                Extracted Resume Text
+              </h3>
+
+              <div className="bg-gray-100 p-4 rounded-xl max-h-40 overflow-y-auto text-sm">
+
+                {resumeText}
+
+              </div>
 
             </div>
           )}
